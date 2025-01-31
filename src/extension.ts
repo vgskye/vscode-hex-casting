@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import untypedRegistry from "./data/registry.json";
+import untypedHexxytestRegistry from "./data/registry_hexxytest3.json";
 import untypedShorthandLookup from "./data/shorthand.json";
 import showInputBox from "./showInputBox";
 import numbers2000 from "./data/numbers_2000.json";
@@ -15,6 +16,7 @@ import {
     ShorthandLookup,
 } from "./patterns/types";
 import { activateHexDebug } from "./debug";
+import { generatePatternLua, LuaError } from "./patterns/lua";
 
 const rootSection = "hex-casting";
 const output = vscode.window.createOutputChannel("Hex Casting");
@@ -70,6 +72,7 @@ interface Configuration {
         };
     };
     enabledMods: { [modName: string]: boolean };
+    hexxytestMode: boolean;
 }
 
 let config: Configuration;
@@ -94,6 +97,8 @@ function updateConfiguration() {
         }
         return config.enabledMods[modName];
     });
+    if (config.hexxytestMode)
+        defaultRegistry = untypedHexxytestRegistry;
     shorthandLookup = makeShorthandLookup();
 }
 
@@ -110,7 +115,7 @@ function makeDocumentation(
 
     const { kind: themeKind } = vscode.window.activeColorTheme;
     // this feels sketchy. is there a better way to do this?
-    result.baseUri = vscode.Uri.file(__dirname.replace(/out$/, "") + "images/patterns/" + themePaths[themeKind]);
+    result.baseUri = vscode.Uri.file(__dirname.replace(/out$/, "") + "images/patterns/" + (config.hexxytestMode ? "hexxytest3/" : themePaths[themeKind]));
     result.supportHtml = true;
 
     if (description != null) result = result.appendMarkdown(`\n\n${description}`);
@@ -1283,6 +1288,23 @@ async function copySelectionAsListCommand(editor: vscode.TextEditor): Promise<vo
     vscode.window.showInformationMessage("Copied selected patterns as a list for rendering with HexBug.");
 }
 
+async function copySelectionAsLuaCommand(editor: vscode.TextEditor): Promise<void> {
+    const patterns = await getSelectionPatterns(editor);
+    if (patterns == null) return;
+
+    let luaTable;
+    try {
+        luaTable = generatePatternLua(patterns, NUMBER_LITERALS);
+    } catch (e) {
+        if (!(e instanceof LuaError)) throw e;
+        vscode.window.showErrorMessage(e.message);
+        return;
+    }
+
+    vscode.env.clipboard.writeText(luaTable);
+    vscode.window.showInformationMessage("Copied Lua Table for selected patterns.");
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     updateConfiguration();
 
@@ -1368,6 +1390,7 @@ export async function activate(context: vscode.ExtensionContext) {
             copySelectedMacroAsForumPostCommand,
         ),
         vscode.commands.registerTextEditorCommand("hex-casting.copySelectionAsList", copySelectionAsListCommand),
+        vscode.commands.registerTextEditorCommand("hex-casting.copySelectionAsLua", copySelectionAsLuaCommand),
     );
 
     activateHexDebug(context);

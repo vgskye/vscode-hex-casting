@@ -8,3 +8,10 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
+
+rendermatic/**
+preprocess.py
+process.py
+registry_dump_raw.json
+registry_dump.json
+rendermatic.csv
