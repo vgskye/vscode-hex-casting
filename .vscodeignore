@@ -14,4 +14,5 @@ preprocess.py
 process.py
 registry_dump_raw.json
 registry_dump.json
+extra_info.json
 rendermatic.csv
